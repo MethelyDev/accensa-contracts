@@ -9,6 +9,15 @@ breaking changes bump the **minor** version, and they are called out as such.
 ## [Unreleased]
 
 ### Added
+- **`receipt-anchor` (issue #424): incremental Merkle tree for continuous
+  anchoring.** New `insert_receipt_leaf(leaf_hash)` appends one receipt at a
+  time to an append-only tree whose frontier (one subtree root per level,
+  packed into a single `Bytes` blob) lives in instance storage, so each
+  insert costs at most 32 hashes and one storage write. Depth up to 32
+  (2^32 leaves). The root is byte-identical to the batch/SDK root of the same
+  leaves (checked against `merkle-vectors.json`). Adds
+  `get_incremental_root`, `get_incremental_leaf_count` and
+  `ReceiptLeafInsertedEvent`.
 - **`refund-vault` (issue #427): dust sweep for orphaned escrows.** New
   `sweep_dust(payment_ref)` lets the merchant move a payment's unrefunded
   remainder to a treasury once it is strictly below the dust threshold

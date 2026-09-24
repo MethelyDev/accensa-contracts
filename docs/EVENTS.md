@@ -96,6 +96,15 @@ between consecutive anchors via `set_min_anchor_interval(interval)`.
 
 ---
 
+### `ReceiptLeafInsertedEvent`
+Emitted when `insert_receipt_leaf` appends a receipt to the continuous-anchoring
+incremental Merkle tree (issue #424).
+
+- **Topics**: `("receipt_leaf_inserted_event", leaf_index: u64)`
+- **Data Map**:
+  - `leaf` (`BytesN<32>`): The appended leaf hash.
+  - `root` (`BytesN<32>`): The tree root after the insertion (same sorted-pair, duplicate-odd-node convention as batch roots).
+
 ## `RefundVault` Events
 
 ### 7. `DepositEvent`
