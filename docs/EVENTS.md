@@ -96,6 +96,15 @@ between consecutive anchors via `set_min_anchor_interval(interval)`.
 
 ---
 
+### `ReceiptLeafInsertedEvent`
+Emitted when `insert_receipt_leaf` appends a receipt to the continuous-anchoring
+incremental Merkle tree (issue #424).
+
+- **Topics**: `("receipt_leaf_inserted_event", leaf_index: u64)`
+- **Data Map**:
+  - `leaf` (`BytesN<32>`): The appended leaf hash.
+  - `root` (`BytesN<32>`): The tree root after the insertion (same sorted-pair, duplicate-odd-node convention as batch roots).
+
 ## `RefundVault` Events
 
 ### 7. `DepositEvent`
@@ -189,3 +198,13 @@ time-window-based refunds.
 
 The `feed_id` is the feed of the policy that was in force, captured before it
 was removed, so a reader can correlate the clear with the preceding set event.
+
+### 16. `DustSweptEvent`
+Emitted when `sweep_dust` recovers the unrefunded remainder of a closed escrow
+(strictly below the dust threshold, closed for more than ~90 days) and deletes
+its refund record.
+
+- **Topics**: `("dust_swept_event", payment_ref: BytesN<32>)`
+- **Data Map**:
+  - `amount` (`i128`): The residual transferred to the treasury. `0` when the payment was fully refunded and the record was only reclaimed.
+  - `treasury` (`Address`): The address that received the dust.
