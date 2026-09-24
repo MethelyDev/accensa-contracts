@@ -9,6 +9,13 @@ breaking changes bump the **minor** version, and they are called out as such.
 ## [Unreleased]
 
 ### Added
+- **`multisig-account` (issue #425): Ed25519 signature malleability protection.**
+  New `crypto` module rejects any signature whose `s` scalar is not strictly
+  below the group order `L` (e.g. the malleated twin `(R, s + L)`) with
+  `Error::NonCanonicalSignature` *before* host verification; exposed as the
+  `verify_ed25519` entrypoint. Also restores the crate's build (misplaced
+  module docs, invalid `[u8; 32]` contract types, bad zero-address strkey) and
+  makes `rotate_signers_and_threshold` require the account's own auth.
 - **Quadratic Voting Module**: Implemented integer square root voting power calculation for the Governance contract to prevent single-whale domination (issue #382).
 - **CI WASM Binary Size & Budget Check**: Added automated WASM binary size and CPU/memory budget assertion CI check with `scripts/check_wasm_budget.sh` and GitHub Actions `wasm-budget-inspect` job (issue #381).
 - **Timelock Delay Queue**: Added timelock delay queue for sensitive admin actions in multisig-account with `queue_transaction`, `execute_queued_transaction`, `cancel_queued_transaction`, and `approve_queued_transaction` functions (issue #383).

@@ -20,8 +20,9 @@
 
 #![no_std]
 
-mod timelock;
+pub mod crypto;
 mod signers;
+pub mod timelock;
 
 // The helpers are only needed by tests; gate them so the contract itself stays
 // minimal. Unit tests within this crate (`#[cfg(test)]`) and downstream
@@ -32,7 +33,7 @@ pub mod testutils;
 
 use soroban_sdk::{
     auth::CustomAccountInterface, contract, contracterror, contractimpl, contracttype, Address,
-    Env, Vec,
+    Bytes, BytesN, Env, Vec,
 };
 
 #[contracterror]
@@ -50,6 +51,9 @@ pub enum Error {
     ProposalNotFound = 5,
     /// The signer has already approved this transaction.
     AlreadyVoted = 6,
+    /// An Ed25519 signature's `s` scalar is not canonical (`s >= L`), i.e.
+    /// it is a malleated form of some other valid signature.
+    NonCanonicalSignature = 7,
 }
 
 #[contracttype]
@@ -127,6 +131,21 @@ impl MultisigAccount {
         new_threshold: u32,
     ) -> Result<(), Error> {
         signers::rotate_signers_and_threshold(&env, to_add, to_remove, new_threshold)
+    }
+
+    /// Verify an Ed25519 `signature` by `public_key` over `message`,
+    /// rejecting malleable encodings.
+    ///
+    /// Returns [`Error::NonCanonicalSignature`] if the signature's `s` scalar
+    /// is not reduced modulo the group order; otherwise defers to the host's
+    /// `ed25519_verify`, which traps on an invalid signature.
+    pub fn verify_ed25519(
+        env: Env,
+        public_key: BytesN<32>,
+        message: Bytes,
+        signature: BytesN<64>,
+    ) -> Result<(), Error> {
+        crypto::verify_ed25519_canonical(&env, &public_key, &message, &signature)
     }
 }
 
