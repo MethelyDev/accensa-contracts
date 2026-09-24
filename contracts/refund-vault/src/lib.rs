@@ -1,7 +1,8 @@
 #![no_std]
 
 use accensa_common::{
-    Error, PolicyContext, RefundPolicyClient, TimePolicyParams, VaultInit, VdfPolicyParams,
+    storage::extend_instance_ttl, Error, PolicyContext, RefundPolicyClient, TimePolicyParams,
+    VaultInit, VdfPolicyParams,
 };
 use soroban_sdk::{
     contract, contractclient, contractevent, contractimpl, contractmeta, contracttype, token,
@@ -923,9 +924,7 @@ fn claim_single(env: &Env, cache: &PolicyCache, claim: &RefundClaim) -> Result<(
         .persistent()
         .extend_ttl(&DataKey::LastClaim, TTL_THRESHOLD, TTL_EXTEND);
 
-    env.storage()
-        .instance()
-        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+    extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
     let extend_to = refund_record_ttl_extend_to(env, window, claim.paid_at_ledger);
     // Threshold == extend_to (not TTL_THRESHOLD): see
     // `refund_record_ttl_extend_to` for why a small fixed threshold makes
@@ -1026,9 +1025,7 @@ impl RefundVault {
             .set(&DataKey::DomainSeparator, &separator);
         env.storage().instance().set(&DataKey::Nonce, &0u64);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1103,9 +1100,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         release_reentrancy_lock(&env);
         Ok(())
     }
@@ -1126,9 +1121,7 @@ impl RefundVault {
         }
 
         env.storage().instance().set(&DataKey::Token, &new_token);
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1327,9 +1320,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(results)
     }
 
@@ -1410,9 +1401,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         release_reentrancy_lock(&env);
         Ok(())
     }
@@ -1511,9 +1500,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1543,9 +1530,7 @@ impl RefundVault {
             .instance()
             .set(&DataKey::SettlementContract, &contract);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1562,9 +1547,7 @@ impl RefundVault {
         env.storage()
             .instance()
             .set(&DataKey::ClaimCooldown, &cooldown_secs);
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1642,9 +1625,7 @@ impl RefundVault {
             TTL_THRESHOLD,
             TTL_EXTEND,
         );
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
 
         CommitEvent {
             operation,
@@ -1712,9 +1693,7 @@ impl RefundVault {
         env.storage()
             .persistent()
             .remove(&DataKey::Commit(commitment_hash.clone()));
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
 
         CommitRevealedEvent {
             operation,
@@ -1751,9 +1730,7 @@ impl RefundVault {
         oracles.push_back(oracle);
         env.storage().instance().set(&DataKey::Oracles, &oracles);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1797,9 +1774,7 @@ impl RefundVault {
         env.storage()
             .instance()
             .set(&DataKey::StorageVersion, &target_version);
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1845,9 +1820,7 @@ impl RefundVault {
         let _ = oracles.remove(index);
         env.storage().instance().set(&DataKey::Oracles, &oracles);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1884,9 +1857,7 @@ impl RefundVault {
                 .instance()
                 .remove(&DataKey::TimePolicyContract),
         }
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -1907,9 +1878,7 @@ impl RefundVault {
                 .set(&DataKey::VdfPolicyContract, &policy),
             None => env.storage().instance().remove(&DataKey::VdfPolicyContract),
         }
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2008,9 +1977,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2036,9 +2003,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2079,9 +2044,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2107,9 +2070,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2141,9 +2102,7 @@ impl RefundVault {
             .set(&DataKey::YieldStrategy, &strategy);
         persist_yield_ttl(&env, &DataKey::YieldStrategy);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2166,9 +2125,7 @@ impl RefundVault {
             .set(&DataKey::ReserveRatio, &basis_points);
         persist_yield_ttl(&env, &DataKey::ReserveRatio);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2191,9 +2148,7 @@ impl RefundVault {
             .set(&DataKey::MaxDeployRatio, &basis_points);
         persist_yield_ttl(&env, &DataKey::MaxDeployRatio);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2301,9 +2256,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         release_reentrancy_lock(&env);
         Ok(())
     }
@@ -2379,9 +2332,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         release_reentrancy_lock(&env);
         Ok(())
     }
@@ -2438,9 +2389,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         release_reentrancy_lock(&env);
         Ok(())
     }
@@ -2489,9 +2438,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2509,9 +2456,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2597,9 +2542,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
@@ -2626,9 +2569,7 @@ impl RefundVault {
         }
         .publish(&env);
 
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        extend_instance_ttl(&env, TTL_THRESHOLD, TTL_EXTEND);
         Ok(())
     }
 
