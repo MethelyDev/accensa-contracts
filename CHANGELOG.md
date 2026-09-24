@@ -9,10 +9,38 @@ breaking changes bump the **minor** version, and they are called out as such.
 ## [Unreleased]
 
 ### Added
-- **Soroban TTL Auto-Extension Helper** (issue #373): Added `extend_instance_ttl` in `contracts/common/src/storage.rs` with `DEFAULT_TTL_LOW_WATER`/`DEFAULT_TTL_BUMP` constants; RefundVault and State-Channel instance TTL maintenance now uses the shared helper instead of ad-hoc `extend_ttl` calls.
-- **State-Channel Replay-Protected Nonce Invalidation** (issue #374): Added `NonceWindow` (256-bit bitmap, LSB-first) in `contracts/state-channel/src/nonce.rs`; `update_state`, `dispute`, and `submit_counter_evidence` consume nonces best-effort, reject balance-regressing states with `Error::StaleState`, and advance the channel nonce monotonically.
-- **Governance Ragequit Mechanism** (issue #411): Added `ragequit` in `contracts/governance/src/ragequit.rs` allowing members who voted against an approved proposal to exit and claim a pro-rata deposit share within `RAGEQUIT_WINDOW` (120,960 ledgers) after the voting deadline; dissent is recorded at vote time; proposals are not prunable until the ragequit window closes; emits `RagequitEvent`; added errors `ProposalNotApproved`..`MathOverflow` (12..17).
-- **Domain-Separated Authorization Signatures** (issue #416): Added `contracts/upto-authorization/src/domain.rs` and `authorize_signed`/`register_signer`/`get_signer`/`get_domain_separator`/`get_authorization_digest`; Ed25519 signatures cover a network- and contract-bound SHA-256 digest of payment id, parties, cap, and expiry; added `Error::SignerNotRegistered = 10`.
+- **`state-channel` (issue #423): multi-asset collateral pooling.** New
+  `open_multi_asset_channel` escrows several tokens in one channel, tracked
+  per token as a `BalanceRecord`. Signed `MultiAssetState`s must name exactly
+  the channel's asset set (`Error::UnsupportedAsset` otherwise) and keep each
+  asset within its own deposit. `settle_multi_asset_channel` pays out every
+  asset in one atomic call after the challenge window, and newer states can
+  still be submitted during that window. Signatures are bound to the
+  contract and channel id.
+- **`receipt-anchor` (issue #424): incremental Merkle tree for continuous
+  anchoring.** New `insert_receipt_leaf(leaf_hash)` appends one receipt at a
+  time to an append-only tree whose frontier (one subtree root per level,
+  packed into a single `Bytes` blob) lives in instance storage, so each
+  insert costs at most 32 hashes and one storage write. Depth up to 32
+  (2^32 leaves). The root is byte-identical to the batch/SDK root of the same
+  leaves (checked against `merkle-vectors.json`). Adds
+  `get_incremental_root`, `get_incremental_leaf_count` and
+  `ReceiptLeafInsertedEvent`.
+- **`refund-vault` (issue #427): dust sweep for orphaned escrows.** New
+  `sweep_dust(payment_ref)` lets the merchant move a payment's unrefunded
+  remainder to a treasury once it is strictly below the dust threshold
+  (default 100, configurable with `set_dust_config(threshold, treasury)`)
+  and the escrow has been closed (refund window elapsed and no later refund)
+  for more than 90 days of ledgers. The swept `RefundV2` record is deleted to
+  reclaim storage, and a `DustSweptEvent` is emitted. Treasury falls back to
+  the fee recipient when unset.
+- **`multisig-account` (issue #425): Ed25519 signature malleability protection.**
+  New `crypto` module rejects any signature whose `s` scalar is not strictly
+  below the group order `L` (e.g. the malleated twin `(R, s + L)`) with
+  `Error::NonCanonicalSignature` *before* host verification; exposed as the
+  `verify_ed25519` entrypoint. Also restores the crate's build (misplaced
+  module docs, invalid `[u8; 32]` contract types, bad zero-address strkey) and
+  makes `rotate_signers_and_threshold` require the account's own auth.
 - **Quadratic Voting Module**: Implemented integer square root voting power calculation for the Governance contract to prevent single-whale domination (issue #382).
 - **CI WASM Binary Size & Budget Check**: Added automated WASM binary size and CPU/memory budget assertion CI check with `scripts/check_wasm_budget.sh` and GitHub Actions `wasm-budget-inspect` job (issue #381).
 - **Timelock Delay Queue**: Added timelock delay queue for sensitive admin actions in multisig-account with `queue_transaction`, `execute_queued_transaction`, `cancel_queued_transaction`, and `approve_queued_transaction` functions (issue #383).

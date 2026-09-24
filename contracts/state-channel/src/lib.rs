@@ -1,12 +1,15 @@
 #![no_std]
 
 #[cfg(test)]
+mod multi_asset_test;
+#[cfg(test)]
 mod test;
 
-use accensa_common::{storage::extend_instance_ttl, Error};
-use nonce::NonceWindow;
+use accensa_common::Error;
+use multi_asset::{MultiAssetChannel, MultiAssetState};
 use soroban_sdk::{
     contract, contractevent, contractimpl, contractmeta, contracttype, Address, Bytes, BytesN, Env,
+    Map,
 };
 
 contractmeta!(key = "name", val = "StateChannel");
@@ -83,6 +86,9 @@ pub enum DataKey {
     Token,
     /// Maximum number of ledgers a channel can stay open before it expires.
     MaxChannelLifetime,
+    /// Persistent: a multi-asset channel (issue #423). Shares the
+    /// `ChannelCount` id sequence with single-asset channels.
+    MultiAssetChannel(u64),
 }
 
 /// Emitted when a channel is opened.
@@ -164,6 +170,15 @@ const DEFAULT_MAX_CHANNEL_LIFETIME: u32 = 1_209_600;
 const TTL_EXTEND: u32 = 518_400;
 const TTL_THRESHOLD: u32 = 100;
 
+/// `0` selects the default challenge period; anything larger is capped.
+fn effective_challenge_period(challenge_period: u32) -> u32 {
+    if challenge_period == 0 {
+        DEFAULT_CHALLENGE_PERIOD
+    } else {
+        challenge_period.min(MAX_CHALLENGE_PERIOD)
+    }
+}
+
 #[contract]
 pub struct StateChannel;
 
@@ -218,11 +233,7 @@ impl StateChannel {
             .unwrap_or(0)
             + 1;
 
-        let effective_challenge = if challenge_period == 0 {
-            DEFAULT_CHALLENGE_PERIOD
-        } else {
-            challenge_period.min(MAX_CHALLENGE_PERIOD)
-        };
+        let effective_challenge = effective_challenge_period(challenge_period);
 
         let channel = Channel {
             sender: sender.clone(),
@@ -648,6 +659,61 @@ impl StateChannel {
             .unwrap_or(DEFAULT_MAX_CHANNEL_LIFETIME)
     }
 
+    // ── Multi-asset channels (issue #423) ────────────────────────────────
+
+    /// Open a channel escrowing several tokens at once. `deposits` maps each
+    /// token address to the amount `sender` locks in it (1..=`MAX_ASSETS`
+    /// tokens, every amount positive). See [`multi_asset`].
+    pub fn open_multi_asset_channel(
+        env: Env,
+        sender: Address,
+        receiver: Address,
+        sender_pubkey: BytesN<32>,
+        deposits: Map<Address, i128>,
+        challenge_period: u32,
+    ) -> Result<u64, Error> {
+        multi_asset::open(
+            &env,
+            sender,
+            receiver,
+            sender_pubkey,
+            deposits,
+            challenge_period,
+        )
+    }
+
+    /// Submit a newer sender-signed multi-asset state, while the channel is
+    /// open or during the post-close challenge window.
+    pub fn update_multi_asset_state(
+        env: Env,
+        channel_id: u64,
+        state: MultiAssetState,
+        signature: BytesN<64>,
+    ) -> Result<(), Error> {
+        multi_asset::update(&env, channel_id, state, signature)
+    }
+
+    /// Close a multi-asset channel with a signed state and start the
+    /// challenge window.
+    pub fn close_multi_asset_channel(
+        env: Env,
+        channel_id: u64,
+        state: MultiAssetState,
+        signature: BytesN<64>,
+    ) -> Result<(), Error> {
+        multi_asset::close(&env, channel_id, state, signature)
+    }
+
+    /// Settle every asset of a multi-asset channel in one atomic call.
+    pub fn settle_multi_asset_channel(env: Env, channel_id: u64) -> Result<(), Error> {
+        multi_asset::settle(&env, channel_id)
+    }
+
+    /// Read a multi-asset channel record.
+    pub fn get_multi_asset_channel(env: Env, channel_id: u64) -> Result<MultiAssetChannel, Error> {
+        multi_asset::get(&env, channel_id)
+    }
+
     // ── Internal helpers ─────────────────────────────────────────────────
 
     fn get_channel_internal(env: &Env, channel_id: u64) -> Result<Channel, Error> {
@@ -691,7 +757,7 @@ impl StateChannel {
 }
 pub mod dispute;
 pub mod epoch;
-pub mod nonce;
+pub mod multi_asset;
 
 /// HTLC parameters for cross-chain swaps.
 #[contracttype]

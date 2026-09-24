@@ -139,6 +139,13 @@ pub enum DataKey {
     /// Global last claim wall-clock timestamp (Unix seconds). Used when a
     /// global cooldown is configured.
     LastClaim,
+    /// Residual refund balance strictly below which a closed escrow's
+    /// remainder counts as dust (issue #427). Defaults to
+    /// [`dust::DEFAULT_DUST_THRESHOLD`].
+    DustThreshold,
+    /// Treasury receiving swept dust (issue #427). Falls back to the fee
+    /// recipient when unset.
+    DustTreasury,
 }
 
 #[contracttype]
@@ -446,6 +453,7 @@ pub struct CommitRevealedEvent {
     pub ledger: u32,
 }
 
+pub mod dust;
 pub mod oracle;
 
 /// Interface for external yield-generating strategies (e.g., Soroban lending protocols).
@@ -2452,6 +2460,43 @@ impl RefundVault {
         Ok(())
     }
 
+    /// Configure the dust sweep (issue #427): residual balances strictly
+    /// below `threshold` are sweepable, and swept dust is sent to
+    /// `treasury`. Merchant (admin) only.
+    ///
+    /// # Errors
+    /// - `InvalidAmount`: `threshold <= 0`.
+    /// - `SelfTransfer`: `treasury` is the vault itself.
+    pub fn set_dust_config(env: Env, threshold: i128, treasury: Address) -> Result<(), Error> {
+        dust::set_dust_config(&env, threshold, treasury)
+    }
+
+    /// Current dust threshold (defaults to [`dust::DEFAULT_DUST_THRESHOLD`]).
+    pub fn get_dust_threshold(env: Env) -> i128 {
+        dust::dust_threshold(&env)
+    }
+
+    /// Address that receives swept dust.
+    pub fn get_dust_treasury(env: Env) -> Address {
+        dust::dust_treasury(&env)
+    }
+
+    /// Sweep the unrefunded remainder of `payment_ref`'s escrow to the dust
+    /// treasury and delete its refund record (issue #427). Merchant (admin)
+    /// only. Returns the amount swept (`0` when the record was fully
+    /// refunded and is only reclaimed).
+    ///
+    /// # Errors
+    /// - `RefundNotFound`: no refund record exists for `payment_ref`.
+    /// - `InvalidAmount`: the remainder is not strictly below the dust
+    ///   threshold.
+    /// - `TimelockNotExpired`: the escrow has not been closed for more than
+    ///   [`dust::DUST_SWEEP_DELAY_LEDGERS`] ledgers.
+    /// - `InsufficientFloat`: the vault cannot cover the remainder.
+    pub fn sweep_dust(env: Env, payment_ref: BytesN<32>) -> Result<i128, Error> {
+        dust::sweep_dust(&env, payment_ref)
+    }
+
     pub fn extend_refund_ttl(env: Env, payment_ref: BytesN<32>) -> Result<(), Error> {
         let record: RefundRecord = env
             .storage()
@@ -2544,6 +2589,8 @@ impl RefundVault {
     }
 }
 
+#[cfg(test)]
+mod dust_tests;
 #[cfg(test)]
 mod fuzz_test;
 #[cfg(test)]
