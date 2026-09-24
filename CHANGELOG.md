@@ -9,6 +9,14 @@ breaking changes bump the **minor** version, and they are called out as such.
 ## [Unreleased]
 
 ### Added
+- **`refund-vault` (issue #427): dust sweep for orphaned escrows.** New
+  `sweep_dust(payment_ref)` lets the merchant move a payment's unrefunded
+  remainder to a treasury once it is strictly below the dust threshold
+  (default 100, configurable with `set_dust_config(threshold, treasury)`)
+  and the escrow has been closed (refund window elapsed and no later refund)
+  for more than 90 days of ledgers. The swept `RefundV2` record is deleted to
+  reclaim storage, and a `DustSweptEvent` is emitted. Treasury falls back to
+  the fee recipient when unset.
 - **`multisig-account` (issue #425): Ed25519 signature malleability protection.**
   New `crypto` module rejects any signature whose `s` scalar is not strictly
   below the group order `L` (e.g. the malleated twin `(R, s + L)`) with
