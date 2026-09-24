@@ -9,6 +9,14 @@ breaking changes bump the **minor** version, and they are called out as such.
 ## [Unreleased]
 
 ### Added
+- **`state-channel` (issue #423): multi-asset collateral pooling.** New
+  `open_multi_asset_channel` escrows several tokens in one channel, tracked
+  per token as a `BalanceRecord`. Signed `MultiAssetState`s must name exactly
+  the channel's asset set (`Error::UnsupportedAsset` otherwise) and keep each
+  asset within its own deposit. `settle_multi_asset_channel` pays out every
+  asset in one atomic call after the challenge window, and newer states can
+  still be submitted during that window. Signatures are bound to the
+  contract and channel id.
 - **`receipt-anchor` (issue #424): incremental Merkle tree for continuous
   anchoring.** New `insert_receipt_leaf(leaf_hash)` appends one receipt at a
   time to an append-only tree whose frontier (one subtree root per level,
