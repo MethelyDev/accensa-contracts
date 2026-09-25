@@ -165,6 +165,13 @@ breaking changes bump the **minor** version, and they are called out as such.
   `test_events_emitted`, removing the repeated field-set boilerplate.
 
 ### Fixed
+- **`state-channel`: restore the build.** The merge of #504 dropped the
+  `extend_instance_ttl` and `NonceWindow` imports and the `nonce` module
+  declaration, and `nonce.rs` used a non-existent `BytesN::zero` and a
+  module-level `#![no_std]`.
+- **`common`, `refund-vault`: clippy clean again.** Removed a module-level
+  `#![no_std]` in `common/src/storage.rs` and a needless borrow in
+  `refund-vault`.
 
 - **Repaired source corruption that left `main` unable to compile.** Two bad
   merges (`a6e234b`, then `8eb4fa6` "Resolve conflicts in PR 263") committed
